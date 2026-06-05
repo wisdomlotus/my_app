@@ -1,0 +1,40 @@
+{
+  "name": "할 일 뿌수기",
+  "short_name": "뿌수기",
+  "description": "그룹별 할 일 관리 앱 — 업무, 장보기, 집안일",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f6fc",
+  "theme_color": "#e8f4fd",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "업무 추가",
+      "short_name": "업무",
+      "url": "./index.html?group=work",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "장보기 추가",
+      "short_name": "장보기",
+      "url": "./index.html?group=shop",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

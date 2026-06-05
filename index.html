@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#e8f4fd" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="할 일 뿌수기" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>할 일 뿌수기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f6fc;
+      min-height: 100vh; min-height: 100dvh;
+      display: flex; justify-content: center;
+      padding: 32px 16px env(safe-area-inset-bottom);
+    }
+    .app {
+      width: 100%; max-width: 640px;
+      background: #fff; border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(100,160,220,0.12);
+      overflow: hidden; position: relative;
+    }
+    .notebook { min-height: 600px; position: relative; }
+    .notebook::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image: repeating-linear-gradient(
+        to bottom, transparent, transparent 39px,
+        rgba(160,200,240,0.25) 39px, rgba(160,200,240,0.25) 40px
+      );
+      background-size: 100% 40px;
+      pointer-events: none; z-index: 0;
+    }
+    .header {
+      padding: 20px 24px 12px; position: relative; z-index: 1;
+      border-bottom: 1.5px solid rgba(160,200,240,0.4);
+      background: rgba(240,248,255,0.8);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header h1 { font-size: 20px; font-weight: 600; color: #2a5a8c; display: flex; align-items: center; gap: 8px; }
+    .offline-badge {
+      font-size: 11px; padding: 3px 9px; border-radius: 20px;
+      background: rgba(220,80,80,0.1); color: #b03030;
+      border: 1px solid rgba(200,80,80,0.25); display: none;
+    }
+    .offline-badge.show { display: inline-block; }
+
+    /* 설치 배너 */
+    .install-banner {
+      display: none; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+      background: rgba(240,248,255,0.95);
+      border-bottom: 1px solid rgba(160,200,240,0.35);
+      font-size: 13px; color: #2a5a8c;
+      position: relative; z-index: 2;
+    }
+    .install-banner.show { display: flex; }
+    .install-banner button {
+      padding: 4px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+      border: 1px solid rgba(100,160,220,0.4); background: rgba(100,160,220,0.15); color: #2a6db5;
+    }
+    .install-banner .dismiss { background: transparent; border: none; color: #aaa; font-size: 18px; padding: 0 4px; }
+
+    .input-area {
+      padding: 12px 24px; position: relative; z-index: 1;
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      background: rgba(248,252,255,0.9);
+      border-bottom: 0.5px solid rgba(160,200,240,0.3);
+    }
+    .input-area input[type="text"] {
+      flex: 1; min-width: 140px;
+      border: 1px solid rgba(100,160,220,0.3); border-radius: 10px;
+      padding: 8px 12px; font-size: 14px; background: #fff; outline: none; color: #222;
+    }
+    .input-area input[type="text"]:focus { border-color: rgba(100,160,220,0.7); box-shadow: 0 0 0 3px rgba(100,160,220,0.12); }
+    .input-area input[type="datetime-local"] {
+      border: 1px solid rgba(100,160,220,0.3); border-radius: 10px;
+      padding: 8px 10px; font-size: 13px; background: #fff; outline: none; color: #555;
+    }
+    select.group-sel {
+      border: 1px solid rgba(100,160,220,0.3); border-radius: 10px;
+      padding: 8px 10px; font-size: 14px; background: #fff; color: #222; outline: none;
+    }
+    .btn-add {
+      background: rgba(100,160,220,0.15); border: 1px solid rgba(100,160,220,0.4);
+      border-radius: 10px; padding: 8px 18px; font-size: 14px; color: #2a6db5;
+      cursor: pointer; font-weight: 500; transition: background 0.15s; white-space: nowrap;
+    }
+    .btn-add:hover { background: rgba(100,160,220,0.28); }
+    .filter-tabs {
+      padding: 10px 24px 4px; display: flex; gap: 6px; flex-wrap: wrap;
+      position: relative; z-index: 1;
+    }
+    .filter-tab {
+      padding: 4px 14px; border-radius: 20px;
+      border: 1px solid rgba(150,180,210,0.3);
+      font-size: 13px; cursor: pointer; background: transparent; color: #666; transition: all 0.15s;
+    }
+    .filter-tab.active { background: rgba(100,160,220,0.15); border-color: rgba(100,160,220,0.5); color: #2a6db5; }
+    .group-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 24px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+      position: relative; z-index: 1;
+      border-bottom: 0.5px solid rgba(160,200,240,0.3); margin-top: 4px;
+    }
+    .group-header.work { color: #6b46c1; }
+    .group-header.shop { color: #c05621; }
+    .group-header.home { color: #b7791f; }
+    .group-header span.cnt {
+      background: rgba(160,200,240,0.18); color: #888;
+      border-radius: 20px; padding: 1px 7px; font-size: 11px; font-weight: 400;
+    }
+    .todo-list { padding: 4px 0 32px; position: relative; z-index: 1; }
+    .todo-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 24px; border-bottom: 0.5px solid rgba(160,200,240,0.18);
+      transition: background 0.12s; min-height: 40px; cursor: default;
+    }
+    .todo-item:hover { background: rgba(220,235,250,0.2); }
+    .todo-item.done .todo-text { text-decoration: line-through; opacity: 0.4; }
+    .drag-handle {
+      width: 18px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 3px;
+      align-items: center; justify-content: center;
+      cursor: grab; opacity: 0; transition: opacity 0.15s; padding: 2px 0;
+    }
+    .drag-handle span { display: block; width: 12px; height: 1.5px; background: rgba(150,180,210,0.7); border-radius: 2px; }
+    .todo-item:hover .drag-handle { opacity: 1; }
+    .todo-item.done .drag-handle { cursor: default; opacity: 0 !important; }
+    .todo-item.dragging { opacity: 0.4; background: rgba(200,225,250,0.3); }
+    .todo-item.drag-over { border-top: 2px solid rgba(100,160,220,0.6); }
+    .check-btn {
+      width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%;
+      border: 1.5px solid rgba(160,200,240,0.7); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: transparent; transition: all 0.15s;
+    }
+    .check-btn.checked { background: rgba(100,200,150,0.2); border-color: rgba(80,180,120,0.6); color: #3a9a60; }
+    .todo-icon { font-size: 17px; flex-shrink: 0; }
+    .todo-text { font-size: 14px; flex: 1; line-height: 1.4; }
+    .todo-text.work { color: #6b46c1; }
+    .todo-text.shop { color: #c05621; }
+    .todo-text.home { color: #b7791f; }
+    .deadline-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; }
+    .deadline-badge.normal  { background: rgba(100,160,220,0.12); color: #3a7bbf; border: 1px solid rgba(100,160,220,0.25); }
+    .deadline-badge.soon    { background: rgba(250,200,100,0.2);  color: #9a6c00; border: 1px solid rgba(200,160,50,0.35); }
+    .deadline-badge.overdue { background: rgba(220,80,80,0.1);    color: #b03030; border: 1px solid rgba(200,80,80,0.25); }
+    .del-btn {
+      width: 24px; height: 24px; flex-shrink: 0;
+      border-radius: 6px; border: none; background: transparent;
+      cursor: pointer; color: rgba(150,150,150,0.4); font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; opacity: 0;
+    }
+    .todo-item:hover .del-btn { opacity: 1; }
+    .del-btn:hover { color: #c04040; background: rgba(200,80,80,0.1); }
+    .empty-state { text-align: center; padding: 48px 24px; color: #aaa; font-size: 14px; }
+    .notif-toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #2a6db5; color: #fff;
+      padding: 13px 20px; border-radius: 12px; font-size: 14px; z-index: 999;
+      transform: translateY(80px); opacity: 0; transition: all 0.3s;
+      max-width: 300px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    .notif-toast.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div id="installBanner" class="install-banner">
+    <span>📲 홈 화면에 추가하면 앱처럼 사용할 수 있어요!</span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="installApp()">설치</button>
+      <button class="dismiss" onclick="dismissInstall()">×</button>
+    </div>
+  </div>
+  <div class="notebook">
+    <div class="header">
+      <h1>📋 할 일 뿌수기</h1>
+      <span id="offlineBadge" class="offline-badge">오프라인</span>
+    </div>
+    <div class="input-area">
+      <select class="group-sel" id="groupSel">
+        <option value="work">💻 업무</option>
+        <option value="shop">🛒 장보기</option>
+        <option value="home">🏠 집안일</option>
+      </select>
+      <input type="text" id="todoInput" placeholder="할 일을 입력하세요..." />
+      <input type="datetime-local" id="deadlineInput" title="마감 시한" />
+      <button class="btn-add" onclick="addTodo()">+ 추가</button>
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="setFilter('all', this)">전체</button>
+      <button class="filter-tab" onclick="setFilter('work', this)">💻 업무</button>
+      <button class="filter-tab" onclick="setFilter('shop', this)">🛒 장보기</button>
+      <button class="filter-tab" onclick="setFilter('home', this)">🏠 집안일</button>
+      <button class="filter-tab" onclick="setFilter('done', this)">✅ 완료</button>
+    </div>
+    <div class="todo-list" id="todoList"></div>
+  </div>
+</div>
+<div class="notif-toast" id="notifToast"></div>
+
+<script>
+// ── Service Worker 등록 (localhost 환경에서만) ──
+const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+if ('serviceWorker' in navigator && isLocal) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
+// ── 오프라인 감지 ──
+function updateOnlineStatus() {
+  document.getElementById('offlineBadge').classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ── PWA 설치 배너 ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('installDismissed')) {
+    document.getElementById('installBanner').classList.add('show');
+  }
+});
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+  });
+}
+function dismissInstall() {
+  localStorage.setItem('installDismissed', '1');
+  document.getElementById('installBanner').classList.remove('show');
+}
+
+// ── 앱 로직 ──
+const GROUP_ORDER = ['work', 'shop', 'home'];
+const groups = {
+  work: { icon: '💻', cls: 'work', label: '💻 업무' },
+  shop: { icon: '🛒', cls: 'shop', label: '🛒 장보기' },
+  home: { icon: '🏠', cls: 'home', label: '🏠 집안일' }
+};
+
+let todos = JSON.parse(localStorage.getItem('todos') || 'null') || [
+  { id: 1, text: '주간 보고서 작성', group: 'work', done: false, deadline: null, order: 0 },
+  { id: 2, text: '우유, 달걀, 사과 사기', group: 'shop', done: false, deadline: null, order: 0 },
+  { id: 3, text: '욕실 청소하기', group: 'home', done: false, deadline: null, order: 0 },
+];
+todos.forEach((t, i) => { if (t.order === undefined) t.order = i; });
+let nextId = Math.max(0, ...todos.map(t => t.id)) + 1;
+let currentFilter = 'all';
+let timers = {};
+let dragSrcId = null;
+
+function save() { localStorage.setItem('todos', JSON.stringify(todos)); }
+
+function fmtDeadline(dl) {
+  if (!dl) return null;
+  const d = new Date(dl), now = new Date(), diff = d - now;
+  const label = (d.getMonth()+1) + '/' + d.getDate() + ' '
+    + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  if (diff < 0) return { label, cls: 'overdue', tag: '기한초과' };
+  if (diff < 3600000) return { label, cls: 'soon', tag: '1시간이내' };
+  if (diff < 86400000) return { label, cls: 'soon', tag: '오늘마감' };
+  return { label, cls: 'normal', tag: null };
+}
+
+function sortedTodos(items) {
+  return [...items].sort((a, b) => {
+    const gi = GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group);
+    if (gi !== 0) return gi;
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (!!a.deadline !== !!b.deadline) return a.deadline ? -1 : 1;
+    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+    return a.order - b.order;
+  });
+}
+
+function render() {
+  const list = document.getElementById('todoList');
+  let items = [...todos];
+  if (currentFilter === 'done') items = items.filter(t => t.done);
+  else if (currentFilter !== 'all') items = items.filter(t => t.group === currentFilter);
+  const sorted = sortedTodos(items);
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty-state">✨ 할 일이 없어요!</div>';
+    return;
+  }
+  let html = '', lastGroup = null;
+  sorted.forEach(t => {
+    if (t.group !== lastGroup) {
+      const g = groups[t.group];
+      const cnt = sorted.filter(x => x.group === t.group && !x.done).length;
+      html += `<div class="group-header ${g.cls}">${g.label}<span class="cnt">${cnt}</span></div>`;
+      lastGroup = t.group;
+    }
+    const g = groups[t.group];
+    const dl = t.deadline ? fmtDeadline(t.deadline) : null;
+    const badge = dl ? `<span class="deadline-badge ${dl.cls}">${dl.tag ? dl.tag + ' · ' : ''}${dl.label}</span>` : '';
+    html += `<div class="todo-item ${t.done ? 'done' : ''}" data-id="${t.id}" ${t.done ? '' : 'draggable="true"'}>
+      <div class="drag-handle" title="드래그해서 순서 변경"><span></span><span></span><span></span></div>
+      <button class="check-btn ${t.done ? 'checked' : ''}" onclick="toggle(${t.id})">${t.done ? '✓' : ''}</button>
+      <span class="todo-icon">${g.icon}</span>
+      <span class="todo-text ${g.cls}">${t.text}</span>
+      ${badge}
+      <button class="del-btn" onclick="deleteTodo(${t.id})">×</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+  attachDragEvents();
+}
+
+function attachDragEvents() {
+  document.querySelectorAll('.todo-item[draggable="true"]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragSrcId = parseInt(el.dataset.id);
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('.todo-item').forEach(i => i.classList.remove('drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      const targetId = parseInt(el.dataset.id);
+      if (dragSrcId === targetId) return;
+      const src = todos.find(t => t.id === dragSrcId);
+      const tgt = todos.find(t => t.id === targetId);
+      if (!src || !tgt || src.group !== tgt.group || tgt.deadline) return;
+      document.querySelectorAll('.todo-item').forEach(i => i.classList.remove('drag-over'));
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetId = parseInt(el.dataset.id);
+      if (dragSrcId === targetId) return;
+      const src = todos.find(t => t.id === dragSrcId);
+      const tgt = todos.find(t => t.id === targetId);
+      if (!src || !tgt || src.group !== tgt.group || tgt.deadline) return;
+      const grpItems = todos.filter(t => t.group === src.group && !t.deadline && !t.done).sort((a,b) => a.order - b.order);
+      const si = grpItems.findIndex(t => t.id === dragSrcId);
+      const ti = grpItems.findIndex(t => t.id === targetId);
+      if (si === -1 || ti === -1) return;
+      grpItems.splice(si, 1);
+      grpItems.splice(ti, 0, src);
+      grpItems.forEach((t, i) => { t.order = i; });
+      save(); render();
+    });
+  });
+}
+
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  const text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  const group = document.getElementById('groupSel').value;
+  const deadline = document.getElementById('deadlineInput').value || null;
+  const maxOrder = Math.max(0, ...todos.filter(t => t.group === group).map(t => t.order));
+  const todo = { id: nextId++, text, group, done: false, deadline, order: maxOrder + 1 };
+  todos.push(todo);
+  input.value = '';
+  document.getElementById('deadlineInput').value = '';
+  save(); render();
+  if (deadline) scheduleNotif(todo);
+}
+
+function toggle(id) {
+  const t = todos.find(x => x.id === id);
+  if (t) { t.done = !t.done; save(); render(); }
+}
+
+function deleteTodo(id) {
+  if (timers[id]) clearTimeout(timers[id]);
+  todos = todos.filter(x => x.id !== id);
+  save(); render();
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function scheduleNotif(todo) {
+  const diff = new Date(todo.deadline) - new Date();
+  const warnAt = diff - 600000;
+  if (warnAt > 0) timers[todo.id] = setTimeout(() => showToast('⏰ 10분 후 마감! · ' + todo.text), warnAt);
+  else if (diff > 0) timers[todo.id] = setTimeout(() => showToast('🔔 마감 시간! · ' + todo.text), diff);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('notifToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+document.getElementById('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+todos.forEach(t => { if (t.deadline && !t.done) scheduleNotif(t); });
+render();
+</script>
+</body>
+</html>
