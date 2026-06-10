@@ -411,7 +411,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 4000);
 }
 
-document.getElementById('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+document.getElementById('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addTodo(); });
 todos.forEach(t => { if (t.deadline && !t.done) scheduleNotif(t); });
 render();
 </script>
