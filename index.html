@@ -159,6 +159,47 @@
     }
     .todo-item:hover .del-btn { opacity: 1; }
     .del-btn:hover { color: #c04040; background: rgba(200,80,80,0.1); }
+
+    /* 수정 버튼 */
+    .edit-btn {
+      width: 24px; height: 24px; flex-shrink: 0;
+      border-radius: 6px; border: none; background: transparent;
+      cursor: pointer; color: rgba(150,150,150,0.4); font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; opacity: 0;
+    }
+    .todo-item:hover .edit-btn { opacity: 1; }
+    .edit-btn:hover { color: #2a6db5; background: rgba(100,160,220,0.1); }
+
+    /* 인라인 수정 모드 */
+    .todo-item.editing { background: rgba(220,235,250,0.3); }
+    .edit-input {
+      flex: 1; border: 1px solid rgba(100,160,220,0.5); border-radius: 8px;
+      padding: 4px 10px; font-size: 14px; outline: none; background: #fff;
+      color: #222; font-family: inherit;
+    }
+    .edit-input:focus { border-color: rgba(100,160,220,0.8); box-shadow: 0 0 0 2px rgba(100,160,220,0.12); }
+    .edit-confirm {
+      padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(100,160,220,0.4);
+      background: rgba(100,160,220,0.15); color: #2a6db5; font-size: 13px;
+      cursor: pointer; white-space: nowrap; font-family: inherit;
+    }
+    .edit-confirm:hover { background: rgba(100,160,220,0.28); }
+    .edit-cancel {
+      padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(150,150,150,0.2);
+      background: transparent; color: #999; font-size: 13px;
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* 완료 한번에 지우기 버튼 */
+    .clear-done-btn {
+      padding: 3px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
+      border: 1px solid rgba(200,80,80,0.3); background: rgba(220,80,80,0.06);
+      color: #b03030; transition: all 0.15s; white-space: nowrap;
+    }
+    .clear-done-btn:hover { background: rgba(220,80,80,0.15); }
+    .clear-done-btn:disabled { opacity: 0.35; cursor: default; }
+
     .empty-state { text-align: center; padding: 48px 24px; color: #aaa; font-size: 14px; }
     .notif-toast {
       position: fixed; bottom: 24px; right: 24px;
@@ -182,7 +223,10 @@
   <div class="notebook">
     <div class="header">
       <h1>📋 할 일 뿌수기</h1>
-      <span id="offlineBadge" class="offline-badge">오프라인</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="clear-done-btn" id="clearDoneBtn" onclick="clearDone()" disabled>완료 삭제</button>
+        <span id="offlineBadge" class="offline-badge">오프라인</span>
+      </div>
     </div>
     <div class="input-area">
       <select class="group-sel" id="groupSel">
@@ -317,11 +361,15 @@ function render() {
       <span class="todo-icon">${g.icon}</span>
       <span class="todo-text ${g.cls}">${t.text}</span>
       ${badge}
+      <button class="edit-btn" onclick="startEdit(${t.id})" title="수정">✏️</button>
       <button class="del-btn" onclick="deleteTodo(${t.id})">×</button>
     </div>`;
   });
   list.innerHTML = html;
   attachDragEvents();
+  // 완료 항목 있으면 버튼 활성화
+  const btn = document.getElementById('clearDoneBtn');
+  if (btn) btn.disabled = todos.filter(t => t.done).length === 0;
 }
 
 function attachDragEvents() {
@@ -387,6 +435,53 @@ function toggle(id) {
 function deleteTodo(id) {
   if (timers[id]) clearTimeout(timers[id]);
   todos = todos.filter(x => x.id !== id);
+  save(); render();
+}
+
+function startEdit(id) {
+  const t = todos.find(x => x.id === id);
+  if (!t) return;
+  const el = document.querySelector(`.todo-item[data-id="${id}"]`);
+  if (!el) return;
+
+  // 드래그 중이면 무시
+  el.classList.add('editing');
+  el.setAttribute('draggable', 'false');
+
+  const g = groups[t.group];
+  el.innerHTML = `
+    <div class="drag-handle"><span></span><span></span><span></span></div>
+    <button class="check-btn ${t.done ? 'checked' : ''}" onclick="toggle(${t.id})">${t.done ? '✓' : ''}</button>
+    <span class="todo-icon">${g.icon}</span>
+    <input class="edit-input" id="editInput-${id}" type="text" value="${t.text.replace(/"/g, '&quot;')}" />
+    <button class="edit-confirm" onclick="confirmEdit(${id})">저장</button>
+    <button class="edit-cancel" onclick="render()">취소</button>
+  `;
+
+  const inp = document.getElementById('editInput-' + id);
+  inp.focus();
+  inp.select();
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.isComposing) confirmEdit(id);
+    if (e.key === 'Escape') render();
+  });
+}
+
+function confirmEdit(id) {
+  const inp = document.getElementById('editInput-' + id);
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) { inp.focus(); return; }
+  const t = todos.find(x => x.id === id);
+  if (t) { t.text = text; save(); render(); }
+}
+
+function clearDone() {
+  const doneCnt = todos.filter(t => t.done).length;
+  if (doneCnt === 0) return;
+  if (!confirm(`완료된 항목 ${doneCnt}개를 삭제할까요?`)) return;
+  todos.filter(t => t.done).forEach(t => { if (timers[t.id]) clearTimeout(timers[t.id]); });
+  todos = todos.filter(t => !t.done);
   save(); render();
 }
 
