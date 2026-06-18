@@ -231,7 +231,7 @@
     <div class="input-area">
       <select class="group-sel" id="groupSel">
         <option value="work">💻 업무</option>
-        <option value="shop">🛒 장보기</option>
+        <option value="shop">🛒 살거</option>
         <option value="home">🏠 집안일</option>
       </select>
       <input type="text" id="todoInput" placeholder="할 일을 입력하세요..." />
@@ -241,7 +241,7 @@
     <div class="filter-tabs">
       <button class="filter-tab active" onclick="setFilter('all', this)">전체</button>
       <button class="filter-tab" onclick="setFilter('work', this)">💻 업무</button>
-      <button class="filter-tab" onclick="setFilter('shop', this)">🛒 장보기</button>
+      <button class="filter-tab" onclick="setFilter('shop', this)">🛒 살거</button>
       <button class="filter-tab" onclick="setFilter('home', this)">🏠 집안일</button>
       <button class="filter-tab" onclick="setFilter('done', this)">✅ 완료</button>
     </div>
@@ -295,7 +295,7 @@ function dismissInstall() {
 const GROUP_ORDER = ['work', 'shop', 'home'];
 const groups = {
   work: { icon: '💻', cls: 'work', label: '💻 업무' },
-  shop: { icon: '🛒', cls: 'shop', label: '🛒 장보기' },
+  shop: { icon: '🛒', cls: 'shop', label: '🛒 살거' },
   home: { icon: '🏠', cls: 'home', label: '🏠 집안일' }
 };
 
