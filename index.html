@@ -105,11 +105,10 @@
 
     /* 달력 팝업 */
     .cal-popup {
-      display: none; position: absolute;
+      display: none; position: fixed;
       background: #fff; border: 1px solid rgba(100,160,220,0.35);
-      border-radius: 14px; box-shadow: 0 8px 32px rgba(80,130,200,0.15);
-      padding: 16px; z-index: 100; min-width: 280px;
-      top: calc(100% + 6px); left: 0;
+      border-radius: 14px; box-shadow: 0 8px 32px rgba(80,130,200,0.18);
+      padding: 16px; z-index: 9999; width: 288px;
     }
     .cal-popup.show { display: block; }
     .cal-popup-header {
@@ -628,7 +627,29 @@ function toggleCalendar() {
   if (!calYear) initCal();
   renderCalendar();
   popup.classList.add('show');
-  // 팝업 외부 클릭 시 닫기
+
+  // 뷰포트 기준 위치 계산 — 버튼 아래, 화면 밖으로 안 나가도록
+  const btn = document.getElementById('calBtn');
+  const btnRect = btn.getBoundingClientRect();
+  const popupW = 288;
+  const popupH = 360; // 예상 높이
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const margin = 8;
+
+  // 좌우: 버튼 왼쪽 정렬, 오른쪽 벗어나면 오른쪽 정렬
+  let left = btnRect.left;
+  if (left + popupW > vw - margin) left = vw - popupW - margin;
+  if (left < margin) left = margin;
+
+  // 상하: 버튼 아래, 아래 공간 부족하면 위로
+  let top = btnRect.bottom + 6;
+  if (top + popupH > vh - margin) top = btnRect.top - popupH - 6;
+  if (top < margin) top = margin;
+
+  popup.style.left = left + 'px';
+  popup.style.top  = top  + 'px';
+
   setTimeout(() => {
     document.addEventListener('click', closeCalOutside, { once: true });
   }, 0);
