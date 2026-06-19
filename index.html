@@ -34,7 +34,7 @@
         rgba(160,200,240,0.25) 39px, rgba(160,200,240,0.25) 40px
       );
       background-size: 100% 40px;
-      pointer-events: none; z-index: 0;
+      pointer-events: none; z-index: -1;
     }
     .header {
       padding: 20px 24px 12px; position: relative; z-index: 1;
@@ -103,12 +103,20 @@
     .cal-badge .cal-clear { color: #aaa; font-size: 13px; margin-left: 2px; }
     .cal-badge .cal-clear:hover { color: #c04040; }
 
+    /* 달력 팝업 뒤 딤 오버레이 */
+    .cal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.25); z-index: 9998;
+    }
+    .cal-overlay.show { display: block; }
+
     /* 달력 팝업 */
     .cal-popup {
       display: none; position: fixed;
-      background: #fff; border: 1px solid rgba(100,160,220,0.35);
-      border-radius: 14px; box-shadow: 0 8px 32px rgba(80,130,200,0.18);
+      background: #ffffff; border: 1px solid rgba(100,160,220,0.5);
+      border-radius: 14px; box-shadow: 0 8px 40px rgba(0,0,0,0.18);
       padding: 16px; z-index: 9999; width: 288px;
+      opacity: 1;
     }
     .cal-popup.show { display: block; }
     .cal-popup-header {
@@ -288,6 +296,23 @@
   </style>
 </head>
 <body>
+<div class="cal-overlay" id="calOverlay" onclick="closeCalendar()"></div>
+<div class="cal-popup" id="calPopup">
+  <div class="cal-popup-header">
+    <button onclick="calPrevMonth()">‹</button>
+    <span class="cal-title" id="calTitle"></span>
+    <button onclick="calNextMonth()">›</button>
+  </div>
+  <div class="cal-weekdays">
+    <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+  </div>
+  <div class="cal-days" id="calDays"></div>
+  <div class="cal-time-row">
+    <span class="cal-time-label">⏰ 시간</span>
+    <input type="time" class="cal-time-input" id="calTime" value="09:00" />
+  </div>
+  <button class="cal-confirm" onclick="confirmCalendar()">확인</button>
+</div>
 <div class="app">
   <div id="installBanner" class="install-banner">
     <span>📲 홈 화면에 추가하면 앱처럼 사용할 수 있어요!</span>
@@ -312,25 +337,7 @@
       </select>
       <input type="text" id="todoInput" placeholder="할 일을 입력하세요..." />
       <input type="datetime-local" id="deadlineInput" />
-      <div style="position:relative; flex-shrink:0;">
-        <button class="cal-btn" id="calBtn" onclick="toggleCalendar()" title="마감 시한 설정">📅</button>
-        <div class="cal-popup" id="calPopup">
-          <div class="cal-popup-header">
-            <button onclick="calPrevMonth()">‹</button>
-            <span class="cal-title" id="calTitle"></span>
-            <button onclick="calNextMonth()">›</button>
-          </div>
-          <div class="cal-weekdays">
-            <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
-          </div>
-          <div class="cal-days" id="calDays"></div>
-          <div class="cal-time-row">
-            <span class="cal-time-label">⏰ 시간</span>
-            <input type="time" class="cal-time-input" id="calTime" value="09:00" />
-          </div>
-          <button class="cal-confirm" onclick="confirmCalendar()">확인</button>
-        </div>
-      </div>
+      <button class="cal-btn" id="calBtn" onclick="toggleCalendar()" title="마감 시한 설정">📅</button>
       <span class="cal-badge" id="calBadge">
         <span id="calBadgeText"></span>
         <span class="cal-clear" onclick="clearDeadline()">×</span>
@@ -623,10 +630,9 @@ function initCal() {
 function toggleCalendar() {
   const popup = document.getElementById('calPopup');
   const isOpen = popup.classList.contains('show');
-  if (isOpen) { popup.classList.remove('show'); return; }
+  if (isOpen) { closeCalendar(); return; }
   if (!calYear) initCal();
   renderCalendar();
-  popup.classList.add('show');
 
   // 뷰포트 기준 위치 계산 — 버튼 아래, 화면 밖으로 안 나가도록
   const btn = document.getElementById('calBtn');
@@ -637,12 +643,10 @@ function toggleCalendar() {
   const vh = window.innerHeight;
   const margin = 8;
 
-  // 좌우: 버튼 왼쪽 정렬, 오른쪽 벗어나면 오른쪽 정렬
   let left = btnRect.left;
   if (left + popupW > vw - margin) left = vw - popupW - margin;
   if (left < margin) left = margin;
 
-  // 상하: 버튼 아래, 아래 공간 부족하면 위로
   let top = btnRect.bottom + 6;
   if (top + popupH > vh - margin) top = btnRect.top - popupH - 6;
   if (top < margin) top = margin;
@@ -650,22 +654,17 @@ function toggleCalendar() {
   popup.style.left = left + 'px';
   popup.style.top  = top  + 'px';
 
-  setTimeout(() => {
-    document.addEventListener('click', closeCalOutside, { once: true });
-  }, 0);
+  popup.classList.add('show');
+  document.getElementById('calOverlay').classList.add('show');
+}
+
+function closeCalendar() {
+  document.getElementById('calPopup').classList.remove('show');
+  document.getElementById('calOverlay').classList.remove('show');
 }
 
 function closeCalOutside(e) {
-  const popup = document.getElementById('calPopup');
-  const btn = document.getElementById('calBtn');
-  if (!popup.contains(e.target) && !btn.contains(e.target)) {
-    popup.classList.remove('show');
-  } else {
-    // 팝업 안 클릭이면 리스너 다시 등록
-    setTimeout(() => {
-      document.addEventListener('click', closeCalOutside, { once: true });
-    }, 0);
-  }
+  // 오버레이 클릭으로 처리되므로 이 함수는 더 이상 사용 안 함
 }
 
 function renderCalendar() {
@@ -744,7 +743,7 @@ function confirmCalendar() {
   badge.classList.add('show');
   document.getElementById('calBtn').classList.add('has-date');
 
-  document.getElementById('calPopup').classList.remove('show');
+  closeCalendar();
 }
 
 function clearDeadline() {
